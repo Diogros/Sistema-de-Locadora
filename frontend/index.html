@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Completo — Locadora AutoDrive</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header id="cabecalho-sistema" style="display: none;">
+        <div class="logo">🚙 AutoDrive Portal</div>
+        <nav style="display: flex; align-items: center;">
+            <span id="nomeUsuarioLogado" class="user-info"></span>
+            <button id="btn-cat" class="active" onclick="alternarTela('catalogo')">🛒 Catálogo</button>
+            <button id="btn-his" onclick="alternarTela('historico')">📋 Minhas Reservas</button>
+            <button id="btn-adm" onclick="alternarTela('admin')" style="border: 1px dashed #3498db; display: none;">⚙️ Painel Admin</button>
+            <button onclick="efetuarLogout()" style="background: #e74c3c; padding: 5px 10px;">Sair</button>
+        </nav>
+    </header>
+
+    <main class="container">
+        <section id="tela-login" class="tela active">
+            <h2>Acesso ao Sistema — Sistema de Locadora</h2>
+            <div class="form-box" style="max-width: 500px; margin: 0 auto;">
+                <div class="form-group">
+                    <label>E-mail institucional:</label>
+                    <input type="email" id="loginEmail" placeholder="Ex: admin@locadora.com ou ana@email.com" value="admin@locadora.com">
+                </div>
+                <div class="form-group">
+                    <label>Senha de acesso:</label>
+                    <input type="password" id="loginSenha" placeholder="Digite sua senha" value="admin2026">
+                </div>
+                <button class="btn-acao" onclick="efetuarLogin()">Entrar no Sistema</button>
+                <div style="margin-top: 15px; font-size: 12px; color: #777; text-align: center;">
+                    <strong>Dica para testes:</strong><br>
+                    Admin: admin@locadora.com | Senha: admin2026<br>
+                    Cliente: ana.silva@email.com | Senha: senha123
+                </div>
+            </div>
+        </section>
+
+        <section id="tela-catalogo" class="tela">
+            <h2>Nossa Frota de Veículos</h2>
+            <div class="grid-carros" id="listaCarrosContainer"></div>
+        </section>
+
+        <section id="tela-reserva" class="tela">
+            <h2>Confirmar Período da Reserva</h2>
+            <div class="form-box" style="max-width: 500px; margin: 0 auto;">
+                <h3 id="reservaCarroTitulo" style="margin-bottom: 15px; color:#3498db;"></h3>
+                <input type="hidden" id="reservaCarroId">
+                <input type="hidden" id="reservaPrecoDiaria"> 
+                <div class="form-group">
+                    <label>Data de Retirada:</label>
+                    <input type="date" id="dataRetirada">
+                </div>
+                <div class="form-group">
+                    <label>Data de Devolução:</label>
+                    <input type="date" id="dataDevolucao">
+                </div>
+                <button class="btn-acao" onclick="salvarNovaReserva()">Finalizar Locação</button>
+                <button class="btn-acao" onclick="alternarTela('catalogo')" style="background:#e74c3c; margin-top: 10px;">Cancelar</button>
+            </div>
+        </section>
+
+        <section id="tela-historico" class="tela">
+            <h2>Histórico de Locações Registradas</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID Reserva</th>
+                        <th>Veículo</th>
+                        <th>Retirada</th>
+                        <th>Devolução</th>
+                        <th>Valor Total</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaHistoricoBody"></tbody>
+            </table>
+        </section>
+
+        <section id="tela-admin" class="tela">
+            <h2>Painel Gerencial Administrativo</h2>
+            <div class="admin-layout">
+                <div class="admin-col-form">
+                    <h3 style="margin-bottom: 15px; color: #2c3e50;">Cadastrar Novo Veículo</h3>
+                    <div class="form-box">
+                        <div class="form-group">
+                            <label>Marca:</label>
+                            <input type="text" id="addMarca" placeholder="Ex: Fiat">
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo:</label>
+                            <input type="text" id="addModelo" placeholder="Ex: Argo">
+                        </div>
+                        <div class="form-group">
+                            <label>Ano:</label>
+                            <input type="number" id="addAno" placeholder="Ex: 2023">
+                        </div>
+                        <div class="form-group">
+                            <label>Placa:</label>
+                            <input type="text" id="addPlaca" placeholder="Ex: ABC1D23">
+                        </div>
+                        <div class="form-group">
+                            <label>Preço da Diária (R$):</label>
+                            <input type="number" id="addPreco" placeholder="Ex: 95.00">
+                        </div>
+                        <div class="form-group">
+                            <label>Link (URL) da Imagem Real:</label>
+                            <input type="text" id="addImg" placeholder="Cole o link da foto do carro aqui">
+                        </div>
+                        <button class="btn-acao" style="background-color: #2e7d32;" onclick="cadastrarCarroAdmin()">Inserir na Frota</button>
+                    </div>
+                </div> 
+                <div class="admin-col-tabela">
+                    <h3 style="margin-bottom: 15px; color: #2c3e50;">Gerenciar Status da Frota</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Veículo</th>
+                                <th>Placa</th>
+                                <th>Status Atual</th>
+                                <th>Alterar Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaGerenciarFrotaBody"></tbody>
+                    </table>
+                </div> 
+            </div> 
+            
+            <div class="sessao-admin" style="margin-top: 40px; width: 100%; box-sizing: border-box;">
+                <h2 style="margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                    📋 Histórico de Reservas
+                </h2>
+                <div style="overflow-x: auto; width: 100%; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <table class="tabela-admin" style="width: 100%; border-collapse: collapse; margin: 0;">
+                        <thead>
+                            <tr style="background-color: #2c3e50; color: white;">
+                                <th style="padding: 15px; text-align: left;">ID</th>
+                                <th style="padding: 15px; text-align: left;">Cliente</th>
+                                <th style="padding: 15px; text-align: left;">Veículo</th>
+                                <th style="padding: 15px; text-align: left;">Período</th>
+                                <th style="padding: 15px; text-align: left;">Valor Total</th>
+                                <th style="padding: 15px; text-align: center;">Status</th>
+                                <th style="padding: 15px; text-align: center;">Ações</th> 
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaReservasBody"></tbody>
+                    </table>
+                </div>
+            </div> 
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
