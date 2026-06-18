@@ -1,6 +1,8 @@
 const mysql = require('mysql2/promise');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+
+console.log("Porta carregada do .env:", process.env.DB_PORT);
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST,

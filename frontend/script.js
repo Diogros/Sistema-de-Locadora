@@ -1,6 +1,6 @@
 let BANCO_RESERVAS = [];
-let USUARIO_LOGADO = null;
 let BANCO_CARROS = [];
+let USUARIO_LOGADO = null;
 
 async function carregarCarrosDoBanco() {
     try {
@@ -16,6 +16,9 @@ async function carregarCarrosDoBanco() {
         }
 
         renderizarCatalogo();
+        if (USUARIO_LOGADO && USUARIO_LOGADO.nivel === 'Admin') {
+            renderizarGerenciadorFrota();
+        }
         
     } catch (erro) {
         console.error("Erro ao buscar os carros do back-end:", erro);
@@ -23,7 +26,7 @@ async function carregarCarrosDoBanco() {
         renderizarCatalogo();
         alert("Não foi possível conectar ao servidor. O Back-end está rodando?");
     }
-}        
+}
 
 async function efetuarLogin() {
     const email = document.getElementById('loginEmail').value.trim();
@@ -38,13 +41,12 @@ async function efetuarLogin() {
         const resposta = await fetch('http://localhost:3000/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: email, senha: senha })
+            body: JSON.stringify({ email, senha })
         });
 
         const dados = await resposta.json();
 
         if (resposta.ok) {
-            
             USUARIO_LOGADO = { 
                 id: dados.id,
                 nome: dados.nome, 
@@ -59,21 +61,17 @@ async function efetuarLogin() {
 
             if (USUARIO_LOGADO.nivel === 'Admin') {
                 document.getElementById('btn-adm').style.display = 'inline-block';
-                carregarReservasDoBanco(); 
             } else {
                 document.getElementById('btn-adm').style.display = 'none';
             }
 
-            if (typeof carregarCarrosDoBanco === 'function') {
-                carregarCarrosDoBanco(); 
-            }
-
+            carregarReservasDoBanco(); 
+            carregarCarrosDoBanco(); 
             alternarTela('catalogo');
 
         } else {
             alert(`Erro: ${dados.mensagem}`);
         }
-
     } catch (erro) {
         console.error('Erro ao comunicar com a API de login:', erro);
         alert('Erro ao conectar com o servidor. Verifique se o Back-end está rodando.');
@@ -82,6 +80,7 @@ async function efetuarLogin() {
 
 function efetuarLogout() {
     USUARIO_LOGADO = null;
+    localStorage.removeItem('usuarioLogado');
     document.getElementById('cabecalho-sistema').style.display = 'none';
     
     document.querySelectorAll('.tela').forEach(t => t.classList.remove('active'));
@@ -116,22 +115,20 @@ function alternarTela(telaNome) {
 
 function renderizarCatalogo() {
     const container = document.getElementById('listaCarrosContainer');
-    
     if (!container) return; 
     
     container.innerHTML = '';
 
-    if (!Array.isArray(BANCO_CARROS)) {
-        console.error("Alerta: BANCO_CARROS não é uma lista válida.", BANCO_CARROS);
-        container.innerHTML = '<p style="text-align:center; padding: 20px;">Nenhum veículo disponível no momento ou erro de conexão.</p>';
+    if (!Array.isArray(BANCO_CARROS) || BANCO_CARROS.length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding: 20px;">Nenhum veículo disponível no momento.</p>';
         return; 
     }
 
     BANCO_CARROS.forEach(carro => {
         const preco = parseFloat(carro.valor_diaria || 0);
-
         const imagem = carro.img || 'https://via.placeholder.com/300x180?text=Sem+Foto';
-        const statusReal = carro.status ? carro.status.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "") : '';
+        
+        const statusReal = carro.status ? carro.status.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, "") : 'disponivel';
         const podeReservar = statusReal === 'disponivel';
 
         let statusTexto = "Disponível";
@@ -145,7 +142,7 @@ function renderizarCatalogo() {
             <img src="${imagem}" class="img-carro" alt="${carro.marca} ${carro.modelo}">
             <div class="conteudo-carro">
                 <div style="font-size:18px; font-weight:bold;">${carro.marca} ${carro.modelo}</div>
-                <span class="badge ${podeReservar ? 'disponivel' : 'indisponivel'}">${statusTexto}</span>
+                <span class="badge ${statusReal}">${statusTexto}</span>
                 <p style="font-size:13px; color:#666;">Ano: ${carro.ano} | Placa: ${carro.placa}</p>
                 <div class="preco">${preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} <span style="font-size:12px; font-weight:normal; color:#666;">/dia</span></div>
                 
@@ -160,20 +157,20 @@ function renderizarCatalogo() {
 
 function renderizarGerenciadorFrota() {
     const tbody = document.getElementById('tabelaGerenciarFrotaBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     BANCO_CARROS.forEach(carro => {
         const tr = document.createElement('tr');
-        
         let statusBadge = '';
         let acaoBotao = '';
 
         if (carro.status === 'Disponivel') {
             statusBadge = `<span class="badge disponivel">Disponível</span>`;
-            acaoBotao = `<button class="btn-table" style="background-color: #e74c3c;" onclick="alterarStatusCarro(${carro.id}, 'manutencao')">🔧 Pôr em Manutenção</button>`;
+            acaoBotao = `<button class="btn-table" style="background-color: #e74c3c;" onclick="alterarStatusCarro(${carro.id}, 'Manutencao')">🔧 Pôr em Manutenção</button>`;
         } else if (carro.status === 'Manutencao') {
             statusBadge = `<span class="badge manutencao">Em Manutenção</span>`;
-            acaoBotao = `<button class="btn-table" style="background-color: #2e7d32;" onclick="alterarStatusCarro(${carro.id}, 'disponivel')">✅ Liberar p/ Frota</button>`;
+            acaoBotao = `<button class="btn-table" style="background-color: #2e7d32;" onclick="alterarStatusCarro(${carro.id}, 'Disponivel')">✅ Liberar p/ Frota</button>`;
         } else if (carro.status === 'Alugado') {
             statusBadge = `<span class="badge alugado">Alugado</span>`;
             acaoBotao = `<span style="color: #777; font-size: 13px; font-style: italic;">Carro em trânsito</span>`;
@@ -190,7 +187,7 @@ function renderizarGerenciadorFrota() {
         tbody.appendChild(tr);
     });
 }
-    
+
 async function alterarStatusCarro(idCarro, novoStatus) {
     const carro = BANCO_CARROS.find(c => c.id === idCarro);
     if (!carro) return;
@@ -205,7 +202,6 @@ async function alterarStatusCarro(idCarro, novoStatus) {
         });
 
         if (resposta.ok) {
-            alert(`Sucesso: Estado do veículo ${carro.marca} atualizado no banco!`);
             carregarCarrosDoBanco(); 
         } else {
             alert("Erro ao atualizar o status no servidor.");
@@ -237,7 +233,12 @@ async function salvarNovaReserva() {
     const dataFim = document.getElementById('dataDevolucao').value;
     const precoDiaria = parseFloat(document.getElementById('reservaPrecoDiaria').value || 0);
 
-   const dataIda = new Date(dataInicio + 'T00:00:00').getTime();
+    if (!dataInicio || !dataFim) {
+        alert("⚠️ Por favor, selecione as datas de retirada e devolução.");
+        return;
+    }
+
+    const dataIda = new Date(dataInicio + 'T00:00:00').getTime();
     const dataVolta = new Date(dataFim + 'T00:00:00').getTime();
     
     const agora = new Date();
@@ -271,13 +272,12 @@ async function salvarNovaReserva() {
     try {
         const resposta = await fetch('http://localhost:3000/reservas', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dadosReserva)
         });
 
         const resultado = await resposta.json();
+        
         if (resposta.ok) {
             alert(`🎉 ${resultado.mensagem || 'Reserva realizada com sucesso!'}\nTotal de ${diferencaDias} diárias: R$ ${valorTotal.toFixed(2)}`);
             
@@ -285,65 +285,157 @@ async function salvarNovaReserva() {
             document.getElementById('dataDevolucao').value = '';
 
             alternarTela('historico');
+            carregarReservasDoBanco();
             
-            if (typeof carregarReservasDoBanco === 'function') carregarReservasDoBanco();
-            if (typeof carregarCarrosDoBanco === 'function') carregarCarrosDoBanco(); 
+            carregarCarrosDoBanco(); 
         } else {
             alert("Erro ao finalizar locação: " + (resultado.mensagem || resultado.erro));
         }
-
     } catch (erro) {
         console.error("Erro ao enviar reserva:", erro);
         alert("Não foi possível conectar ao servidor para concluir a locação.");
     }
 }
 
+async function carregarReservasDoBanco() {
+    try {
+        const resposta = await fetch('http://localhost:3000/reservas');
+        if (!resposta.ok) throw new Error("Erro na resposta do servidor");
+
+        const reservas = await resposta.json();
+        BANCO_RESERVAS = reservas || [];
+
+        renderizarHistorico(); 
+        
+        if (USUARIO_LOGADO && USUARIO_LOGADO.nivel === 'Admin') {
+            renderizarTabelaAdminReservas(); 
+        }
+    } catch (erro) {
+        console.error("Erro ao carregar reservas:", erro);
+    }
+}
+
 function renderizarHistorico() {
     const tbody = document.getElementById('tabelaHistoricoBody');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
-    if(BANCO_RESERVAS.length === 0) {
+    const reservasUsuario = USUARIO_LOGADO.nivel === 'Admin' 
+        ? BANCO_RESERVAS 
+        : BANCO_RESERVAS.filter(r => r.usuario_id === USUARIO_LOGADO.id || r.cliente === USUARIO_LOGADO.nome);
+
+    if(reservasUsuario.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#999;">Nenhuma reserva realizada ainda.</td></tr>`;
         return;
     }
 
-    BANCO_RESERVAS.forEach(res => {
+    reservasUsuario.forEach(res => {
         const tr = document.createElement('tr');
-        const badgeCor = res.status === 'Ativa' ? 'background:#e8f5e9; color:#2e7d32;' : 'background:#ffebee; color:#c62828;';
-        const botaoBot = res.status === 'Ativa' 
+        
+        let corStatus = '#95a5a6'; 
+        if (res.status === 'Confirmada') corStatus = '#2ecc71'; 
+        if (res.status === 'Concluida') corStatus = '#3498db'; 
+        if (res.status === 'Cancelada') corStatus = '#e74c3c'; 
+        if (res.status === 'Pendente') corStatus = '#f39c12';
+
+        const dInicio = res.data_inicio ? new Date(res.data_inicio).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A';
+        const dFim = res.data_fim ? new Date(res.data_fim).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A';
+        const valor = res.valor_total ? Number(res.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+        const nomeCarro = res.marca ? `${res.marca} ${res.modelo}` : res.veiculo; 
+
+        const botaoBot = (res.status === 'Confirmada' || res.status === 'Pendente')
             ? `<button onclick="cancelarReserva(${res.id})" style="background:#e74c3c; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-weight:bold;">Cancelar</button>` 
             : `<span style="color:#999; font-size:13px;">Sem ações</span>`;
 
-        const dInFormatada = res.retirada.split('-').reverse().join('/');
-        const dOutFormatada = res.devolucao.split('-').reverse().join('/');
-
         tr.innerHTML = `
-            <td>#00${res.id}</td>
-            <td><b>${res.veiculo}</b></td>
-            <td>${dInFormatada}</td>
-            <td>${dOutFormatada}</td>
-            <td style="color:#2e7d32; font-weight:bold;">${Number(res.total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-            <td><span style="${badgeCor} padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold;">${res.status}</span></td>
+            <td>#${res.id}</td>
+            <td><b>${nomeCarro}</b></td>
+            <td>${dInicio}</td>
+            <td>${dFim}</td>
+            <td style="color:#2e7d32; font-weight:bold;">${valor}</td>
+            <td><span style="background-color:${corStatus}; color:white; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:bold;">${res.status}</span></td>
             <td>${botaoBot}</td>
         `;
         tbody.appendChild(tr);
     });
 }
 
-function cancelarReserva(idReserva) {
-    if (confirm("Tem certeza que deseja cancelar esta reserva?")) {
-        const reserva = BANCO_RESERVAS.find(r => r.id === idReserva);
+function renderizarTabelaAdminReservas() {
+    const tbody = document.getElementById('tabelaReservasBody');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (!BANCO_RESERVAS || BANCO_RESERVAS.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#777; padding: 20px;">📋 Nenhuma reserva encontrada.</td></tr>';
+        return;
+    }
+
+    BANCO_RESERVAS.forEach(reserva => {
+        const dataInicio = new Date(reserva.data_inicio).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
+        const dataFim = new Date(reserva.data_fim).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
         
-        if (reserva) {
-            reserva.status = "Cancelada";
-            const carro = BANCO_CARROS.find(c => c.id === reserva.carroId);
-            if (carro) {
-                carro.status = "disponivel";
-            }
-            alert("Reserva cancelada com sucesso. O veículo voltou a ficar disponível no catálogo!");
-            renderizarCatalogo();
-            renderizarHistorico();
+        let corStatus = '#95a5a6'; 
+        if (reserva.status === 'Confirmada') corStatus = '#2ecc71'; 
+        if (reserva.status === 'Concluida') corStatus = '#3498db'; 
+        if (reserva.status === 'Cancelada') corStatus = '#e74c3c'; 
+        if (reserva.status === 'Pendente') corStatus = '#f39c12';
+
+        let botoesAcao = '';
+        if (reserva.status === 'Pendente') {
+            botoesAcao = `
+                <button onclick="alterarStatusReserva(${reserva.id}, 'Confirmada')" style="background:#2ecc71; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; margin-right:5px;">✅ Confirmar</button>
+                <button onclick="alterarStatusReserva(${reserva.id}, 'Cancelada')" style="background:#e74c3c; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold;">❌ Cancelar</button>
+            `;
+        } else if (reserva.status === 'Confirmada') {
+            botoesAcao = `
+                <button onclick="alterarStatusReserva(${reserva.id}, 'Concluida')" style="background:#3498db; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; margin-right:5px;">🏁 Concluir</button>
+                <button onclick="alterarStatusReserva(${reserva.id}, 'Cancelada')" style="background:#e74c3c; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold;">❌ Cancelar</button>
+            `;
+        } else {
+            botoesAcao = `<span style="color:#aaa; font-style: italic; font-size:12px;">Finalizada</span>`;
         }
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>#${reserva.id}</td>
+            <td><b>${reserva.cliente}</b></td>
+            <td>${reserva.marca} ${reserva.modelo} <br><small style="color:#777;">(${reserva.placa})</small></td>
+            <td>${dataInicio} - ${dataFim}</td>
+            <td>${Number(reserva.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+            <td><span style="background-color: ${corStatus}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${reserva.status}</span></td>
+            <td style="text-align: center;">${botoesAcao}</td> `;
+        tbody.appendChild(tr);
+    });
+}
+
+function cancelarReserva(idReserva) {
+    alterarStatusReserva(idReserva, 'Cancelada');
+}
+
+async function alterarStatusReserva(id, novoStatus) {
+    if (!confirm(`Tem certeza que deseja alterar o status da reserva #${id} para '${novoStatus}'?`)) {
+        return;
+    }
+
+    try {
+        const resposta = await fetch(`http://localhost:3000/reservas/${id}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: novoStatus })
+        });
+
+        const dados = await resposta.json();
+
+        if (resposta.ok) {
+            alert(dados.mensagem || "Status atualizado com sucesso!");
+            carregarReservasDoBanco();
+            carregarCarrosDoBanco(); 
+        } else {
+            alert("Erro: " + dados.erro);
+        }
+    } catch (erro) {
+        console.error("Erro ao atualizar status:", erro);
+        alert("Não foi possível conectar ao servidor para alterar o status.");
     }
 }
 
@@ -420,91 +512,6 @@ async function deletarCarro(idCarro) {
     } catch (erro) {
         console.error("Erro ao excluir:", erro);
         alert("Falha na comunicação com o servidor.");
-    }
-}
-
-async function carregarReservasDoBanco() {
-    try {
-        const resposta = await fetch('http://localhost:3000/reservas');
-        if (!resposta.ok) throw new Error("Erro na resposta do servidor");
-
-        const reservas = await resposta.json();
-        const tbody = document.getElementById('tabelaReservasBody');
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-
-        if (!reservas || reservas.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#777; padding: 20px;">📋 Nenhuma reserva encontrada.</td></tr>';
-            return;
-        }
-
-        reservas.forEach(reserva => {
-            const dataInicio = new Date(reserva.data_inicio).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-            const dataFim = new Date(reserva.data_fim).toLocaleDateString('pt-BR', {timeZone: 'UTC'});
-            
-            let corStatus = '#95a5a6'; 
-            if (reserva.status === 'Confirmada') corStatus = '#2ecc71'; 
-            if (reserva.status === 'Concluida') corStatus = '#3498db'; 
-            if (reserva.status === 'Cancelada') corStatus = '#e74c3c'; 
-            if (reserva.status === 'Pendente') corStatus = '#f39c12';
-
-            let botoesAcao = '';
-            if (reserva.status === 'Pendente') {
-                botoesAcao = `
-                    <button onclick="alterarStatusReserva(${reserva.id}, 'Confirmada')" style="background:#2ecc71; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; margin-right:5px;">✅ Confirmar</button>
-                    <button onclick="alterarStatusReserva(${reserva.id}, 'Cancelada')" style="background:#e74c3c; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold;">❌ Cancelar</button>
-                `;
-            } else if (reserva.status === 'Confirmada') {
-                botoesAcao = `
-                    <button onclick="alterarStatusReserva(${reserva.id}, 'Concluida')" style="background:#3498db; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold; margin-right:5px;">🏁 Concluir</button>
-                    <button onclick="alterarStatusReserva(${reserva.id}, 'Cancelada')" style="background:#e74c3c; color:white; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:bold;">❌ Cancelar</button>
-                `;
-            } else {
-                botoesAcao = `<span style="color:#aaa; font-style: italic; font-size:12px;">Finalizada</span>`;
-            }
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>#${reserva.id}</td>
-                <td><b>${reserva.cliente}</b></td>
-                <td>${reserva.marca} ${reserva.modelo} <br><small style="color:#777;">(${reserva.placa})</small></td>
-                <td>${dataInicio} - ${dataFim}</td>
-                <td>${Number(reserva.valor_total).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                <td><span style="background-color: ${corStatus}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">${reserva.status}</span></td>
-                <td style="text-align: center;">${botoesAcao}</td> `;
-            tbody.appendChild(tr);
-        });
-    } catch (erro) {
-        console.error("Erro ao carregar reservas:", erro);
-    }
-}
-
-async function alterarStatusReserva(id, novoStatus) {
-    if (!confirm(`Tem certeza que deseja alterar o status da reserva #${id} para '${novoStatus}'?`)) {
-        return;
-    }
-
-    try {
-        const resposta = await fetch(`http://localhost:3000/reservas/${id}/status`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ status: novoStatus })
-        });
-
-        const dados = await resposta.json();
-
-        if (resposta.ok) {
-            alert(dados.mensagem);
-            carregarReservasDoBanco();
-        } else {
-            alert("Erro: " + dados.erro);
-        }
-    } catch (erro) {
-        console.error("Erro ao atualizar status:", erro);
-        alert("Não foi possível conectar ao servidor para alterar o status.");
     }
 }
 

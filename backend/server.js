@@ -1,9 +1,9 @@
 const express = require('express');
 const cors = require('cors'); 
 const dotenv = require('dotenv');
-const veiculoController = require('./controllers/veiculoController');
-const reservaController = require('./controllers/reservaController');
-const authController = require('./controllers/authcontroller');
+const veiculoController = require('./src/controllers/veiculoController');
+const reservaController = require('./src/controllers/reservaController');
+const authController = require('./src/controllers/authcontroller');
 
 dotenv.config();
 
