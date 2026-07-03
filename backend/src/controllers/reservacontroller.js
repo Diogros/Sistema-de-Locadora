@@ -41,7 +41,9 @@ const criarReserva = async (req, res) => {
 
 const listarReservas = async (req, res) => {
     try {
-        const query = `
+        const { usuario_id } = req.query;
+
+        let query = `
             SELECT 
                 r.id, 
                 u.nome AS cliente, 
@@ -55,9 +57,18 @@ const listarReservas = async (req, res) => {
             FROM reservas r
             JOIN usuarios u ON r.usuario_id = u.id
             JOIN veiculos v ON r.veiculo_id = v.id
-            ORDER BY r.data_criacao DESC
         `;
-        const [reservas] = await pool.query(query);
+        
+        const params = [];
+
+        if (usuario_id) {
+            query += ` WHERE r.usuario_id = ?`;
+            params.push(usuario_id);
+        }
+
+        query += ` ORDER BY r.data_criacao DESC`;
+
+        const [reservas] = await pool.query(query, params);
         
         res.status(200).json(reservas);
     } catch (erro) {

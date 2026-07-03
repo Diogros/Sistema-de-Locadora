@@ -46,16 +46,15 @@ const deletarVeiculo = async (req, res) => {
 
         const [resultado] = await pool.query('DELETE FROM veiculos WHERE id = ?', [id]);
 
-        if (resultado.affectedRows > 0) {
-            res.json({ mensagem: "Veículo e todo o seu histórico de reservas foram excluídos com sucesso!" });
-        } else {
-            res.status(404).json({ erro: "Veículo não encontrado." });
-        }
-
-    } catch (erro) {
-        console.error("Erro ao excluir veículo:", erro);
-        res.status(500).json({ erro: "Erro interno do servidor ao tentar excluir o veículo." });
-    }
+if (resultado.affectedRows > 0) {
+    res.json({ mensagem: "Veículo e todo o seu histórico de reservas foram excluídos com sucesso!" });
+} else {
+    res.status(404).json({ mensagem: "Veículo não encontrado no banco de dados." });
+}
+} catch (erro) {
+    console.error("Erro ao deletar veículo:", erro);
+    res.status(500).json({ mensagem: "Erro interno do servidor ao deletar o veículo." }); 
+}
 };
 
 module.exports = {

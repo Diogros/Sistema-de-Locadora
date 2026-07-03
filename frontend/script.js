@@ -320,9 +320,7 @@ function renderizarHistorico() {
     if (!tbody) return;
     tbody.innerHTML = '';
 
-    const reservasUsuario = USUARIO_LOGADO.nivel === 'Admin' 
-        ? BANCO_RESERVAS 
-        : BANCO_RESERVAS.filter(r => r.usuario_id === USUARIO_LOGADO.id || r.cliente === USUARIO_LOGADO.nome);
+    const reservasUsuario = BANCO_RESERVAS.filter(r => r.usuario_id === USUARIO_LOGADO.id || r.cliente === USUARIO_LOGADO.nome);
 
     if(reservasUsuario.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#999;">Nenhuma reserva realizada ainda.</td></tr>`;
@@ -440,15 +438,15 @@ async function alterarStatusReserva(id, novoStatus) {
 }
 
 async function cadastrarCarroAdmin() {
-    const marca = document.getElementById('addMarca').value;
-    const modelo = document.getElementById('addModelo').value;
-    const ano = document.getElementById('addAno').value;
-    const placa = document.getElementById('addPlaca').value;
-    const preco = document.getElementById('addPreco').value;
+    const marca = document.getElementById('addMarca').value.trim();
+    const modelo = document.getElementById('addModelo').value.trim();
+    const ano = document.getElementById('addAno').value.trim();
+    const placa = document.getElementById('addPlaca').value.trim();
+    const preco = document.getElementById('addPreco').value.trim();
     let imgUrl = document.getElementById('addImg').value.trim();
 
     if(!marca || !modelo || !ano || !placa || !preco) {
-        alert("Erro: Todos os campos do veículo são obrigatórios para cadastro.");
+        alert("⚠️ Erro: Todos os campos do veículo são obrigatórios para cadastro.");
         return;
     }
 
@@ -456,12 +454,14 @@ async function cadastrarCarroAdmin() {
         imgUrl = "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=500&q=80";
     }
 
+    const precoFormatado = preco.replace(',', '.');
+
     const novoVeiculo = {
         marca: marca,
         modelo: modelo,
         ano: parseInt(ano),
         placa: placa,
-        valor_diaria: parseFloat(preco), 
+        valor_diaria: parseFloat(precoFormatado),
         status: "Disponivel", 
         img: imgUrl 
     };
@@ -474,7 +474,7 @@ async function cadastrarCarroAdmin() {
         });
 
         if (resposta.ok) {
-            alert(`Sucesso: ${marca} ${modelo} foi incluído no banco de dados!`);
+            alert(`🎉 Sucesso: ${marca} ${modelo} foi incluído no banco de dados!`);
             
             document.getElementById('addMarca').value = '';
             document.getElementById('addModelo').value = '';
@@ -486,10 +486,12 @@ async function cadastrarCarroAdmin() {
             carregarCarrosDoBanco();
             alternarTela('catalogo');
         } else {
-            alert("Erro ao cadastrar o veículo no servidor.");
+            const erroServidor = await resposta.json();
+            alert(`❌ Erro no servidor: ${erroServidor.mensagem || erroServidor.erro || "Falha ao cadastrar."}`);
         }
     } catch (erro) {
         console.error("Erro na requisição:", erro);
+        alert("❌ Erro de conexão: O servidor Node.js parece estar fora do ar.");
     }
 }
 
@@ -515,4 +517,34 @@ async function deletarCarro(idCarro) {
     }
 }
 
-window.onload = carregarCarrosDoBanco;
+function verificarSessaoSalva() {
+    const sessaoSalva = localStorage.getItem('usuarioLogado');
+    
+    if (sessaoSalva) {
+        try {
+            USUARIO_LOGADO = JSON.parse(sessaoSalva);
+            
+            document.getElementById('tela-login').classList.remove('active');
+            document.getElementById('cabecalho-sistema').style.display = 'flex';
+            document.getElementById('nomeUsuarioLogado').innerText = `👤 ${USUARIO_LOGADO.nome} (${USUARIO_LOGADO.nivel})`;
+
+            if (USUARIO_LOGADO.nivel === 'Admin') {
+                document.getElementById('btn-adm').style.display = 'inline-block';
+            } else {
+                document.getElementById('btn-adm').style.display = 'none';
+            }
+
+            carregarReservasDoBanco(); 
+            carregarCarrosDoBanco(); 
+            alternarTela('catalogo');
+            
+        } catch (erro) {
+            console.error("Erro ao restaurar sessão:", erro);
+            efetuarLogout(); 
+        }
+    } else {
+        carregarCarrosDoBanco();
+    }
+}
+
+window.onload = verificarSessaoSalva;

@@ -25,13 +25,13 @@
             <h2>Acesso ao Sistema — Sistema de Locadora</h2>
             <div class="form-box" style="max-width: 500px; margin: 0 auto;">
                 <div class="form-group">
-                    <label>E-mail institucional:</label>
-                    <input type="email" id="loginEmail" placeholder="Ex: admin@locadora.com ou ana@email.com" value="admin@locadora.com">
-                </div>
-                <div class="form-group">
-                    <label>Senha de acesso:</label>
-                    <input type="password" id="loginSenha" placeholder="Digite sua senha" value="admin2026">
-                </div>
+    <label>E-mail institucional:</label>
+    <input type="email" id="loginEmail" placeholder="Ex: admin@locadora.com ou ana@email.com" value="admin@locadora.com" onkeydown="if(event.key === 'Enter') efetuarLogin()">
+</div>
+<div class="form-group">
+    <label>Senha de acesso:</label>
+    <input type="password" id="loginSenha" placeholder="Digite sua senha" value="admin2026" onkeydown="if(event.key === 'Enter') efetuarLogin()">
+</div>
                 <button class="btn-acao" onclick="efetuarLogin()">Entrar no Sistema</button>
                 <div style="margin-top: 15px; font-size: 12px; color: #777; text-align: center;">
                     <strong>Dica para testes:</strong><br>
